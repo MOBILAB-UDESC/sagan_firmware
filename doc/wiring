@@ -4,3 +4,11 @@ BLK - GND
 BRW - SCL (PIN 5)
 GRN - SDA (PIN 4)
 GRY - DIR (PIN 6)
+
+motor quadrature encoder
+RED - Motor Power +
+BLK - Motor Power -
+GRN - GND encoder
+BLU - VCC encoder
+YLW - A signal
+WHT - B signal

@@ -7,7 +7,7 @@
 #define SPACES "                              "
 
 // Pins
-#define ENCA_PIN 10 //B channel needs to be connected to the following pin (in this case pin 11)
+#define ENCA_PIN 14 //B channel needs to be connected to the following pin (in this case pin 11)
 
 int main()
 {
@@ -31,10 +31,10 @@ int main()
 
     while (true) {
         
-        // encoder.update(sampling_time);
+        encoder.update(sampling_time);
 
         printf("Raw value: %d | Non-raw value: %d%s\n", as5600_read_raw_angl(&as5600), as5600_read_angl(&as5600), SPACES);
-        // printf("Position: %d | Velocity: %d%s\n", encoder.get_position(), encoder.get_velocity(), SPACES);
-        sleep_ms(1);
+        printf("Position: %d | Velocity: %d%s\n", encoder.get_position(), encoder.get_velocity(), SPACES);
+        sleep_ms(10);
     }
 }
