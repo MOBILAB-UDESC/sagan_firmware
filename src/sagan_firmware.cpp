@@ -7,13 +7,17 @@
 #define SPACES "                              "
 
 // Pins
-#define ENCA_PIN 10
+#define ENCA_PIN 10 //B channel needs to be connected to the following pin (in this case pin 11)
 
 int main()
 {
     as5600_t as5600 = { 0 };
     static as5600_conf_t as5600_conf;
     static as5600_conf_t as5600_conf_bckp;
+
+    float ppr = 1024.0; // pulses per revolution of the encoder
+    float sampling_time = 1e-3;
+    QuadratureEncoder encoder(ENCA_PIN, ppr);
 
     stdio_init_all();
 
@@ -27,9 +31,10 @@ int main()
 
     while (true) {
         
-        auto value = as5600_read_raw_angl(&as5600);
+        encoder.update(sampling_time);
 
-        printf("Raw value: %d | Non-raw value: %d%s\r", value, as5600_read_angl(&as5600), SPACES);
-        sleep_ms(1000);
+        printf("Raw value: %d | Non-raw value: %d%s\r", as5600_read_raw_angl(&as5600), as5600_read_angl(&as5600), SPACES);
+        printf("Position: %d | Velocity: %d%s\r", encoder.get_position(), encoder.get_velocity(), SPACES);
+        sleep_ms(1);
     }
 }
