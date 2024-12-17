@@ -31,10 +31,10 @@ int main()
 
     while (true) {
         
-        encoder.update(sampling_time);
+        // encoder.update(sampling_time);
 
-        printf("Raw value: %d | Non-raw value: %d%s\r", as5600_read_raw_angl(&as5600), as5600_read_angl(&as5600), SPACES);
-        printf("Position: %d | Velocity: %d%s\r", encoder.get_position(), encoder.get_velocity(), SPACES);
+        printf("Raw value: %d | Non-raw value: %d%s\n", as5600_read_raw_angl(&as5600), as5600_read_angl(&as5600), SPACES);
+        // printf("Position: %d | Velocity: %d%s\n", encoder.get_position(), encoder.get_velocity(), SPACES);
         sleep_ms(1);
     }
 }

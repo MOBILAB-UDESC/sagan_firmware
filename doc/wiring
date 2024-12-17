@@ -1,0 +1,6 @@
+as6500 encoder
+RED - VCC (3v3dc)
+BLK - GND
+BRW - SCL (PIN 5)
+GRN - SDA (PIN 4)
+GRY - DIR (PIN 6)
