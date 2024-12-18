@@ -1,4 +1,4 @@
-#include "QuadratureEncoder.hpp"
+#include "quadrature_encoder.hpp"
 
 QuadratureEncoder::QuadratureEncoder(uint8_t pin, float ppr, float gear_ratio) : ppr(ppr * 4.0f), gear_ratio(gear_ratio)
 {

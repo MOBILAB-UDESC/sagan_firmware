@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
-#include "dwm_pico_AS5600.h"
-#include "QuadratureEncoder.hpp"
+#include "magnetic_encoder.h"
+#include "quadrature_encoder.hpp"
 
 #define SPACES "                              "
 
@@ -15,9 +15,8 @@ int main()
     static as5600_conf_t as5600_conf;
     static as5600_conf_t as5600_conf_bckp;
 
-    float ppr = 1024.0; // pulses per revolution of the encoder
-    float sampling_time = 1e-3;
-    QuadratureEncoder encoder(ENCA_PIN, ppr);
+    float sampling_time = 1e-2;
+    QuadratureEncoder encoder(ENCA_PIN, 64.0, 30.0); //30:1 Metal Gearmotor 37Dx68L mm 12V with 64 CPR Encoder (Helical Pinion)
 
     stdio_init_all();
 

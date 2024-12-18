@@ -1,15 +1,4 @@
-/*
- * File: dwm_pico_AS5600.c
- * Project: dwm_pico_as5600
- * -----
- * This source code is released under BSD-3 license.
- * Check LICENSE file for full license agreement.
- * Check COPYING for 3rd party licenses.
- * -----
- * Copyright 2024 M.Kusiak (Timax)
- */
-
-#include "dwm_pico_AS5600.h"
+#include "magnetic_encoder.h"
 #include "hardware/i2c.h"
 #include "pico/stdlib.h"
 #include <math.h>

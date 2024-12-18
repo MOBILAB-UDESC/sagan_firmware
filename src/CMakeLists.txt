@@ -1,23 +1,38 @@
 
-add_library(as5600lib
-    dwm_pico_AS5600.c
+add_library(magenclib
+   magnetic_encoder.c
 )
 
-target_include_directories(as5600lib 
+target_include_directories(magenclib
     PUBLIC 
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
-target_link_libraries(as5600lib 
+target_link_libraries(magenclib
     pico_stdlib
     hardware_i2c
+)
+
+add_library(motordriver
+    motor_driver.cpp
+)
+
+target_include_directories(motordriver 
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
+
+target_link_libraries(motordriver 
+    pico_stdlib
+    hardware_adc
+    hardware_pwm
 )
 
 
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(sagan_firmware 
-    QuadratureEncoder.cpp
+    quadrature_encoder.cpp
     sagan_firmware.cpp 
 )
 
@@ -43,7 +58,7 @@ target_include_directories(sagan_firmware
 
 # Add any user requested libraries
 target_link_libraries(sagan_firmware 
-    as5600lib 
+    magenclib
     pico_stdlib
     hardware_i2c
     hardware_pio
