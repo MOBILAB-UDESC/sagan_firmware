@@ -42,7 +42,7 @@ MotorDriver::MotorDriver(
     gpio_set_function(this->pwm, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(this->pwm);
     pwm_set_wrap(slice_num, 255);
-    pwm_set_chan_level(slice_num, PWM_CHAN_A, 1);
+    pwm_set_chan_level(slice_num, pwm_gpio_to_channel(this->pwm), 1);
     pwm_set_enabled(slice_num, true);
 
     adc_init();
@@ -100,7 +100,7 @@ void MotorDriver::turnOffMotor()
     }
     
     uint slice_num = pwm_gpio_to_slice_num(this->pwm);
-    pwm_set_chan_level(slice_num, PWM_CHAN_A, 0);
+    pwm_set_chan_level(slice_num, pwm_gpio_to_channel(this->pwm), 0);
 
     this->state = BRAKETOGND;
 }
@@ -149,7 +149,7 @@ bool MotorDriver::turnOnMotor( MotorState state )
 void MotorDriver::setMotorOutput(uint16_t duty_cycle)
 {
     uint slice_num = pwm_gpio_to_slice_num(this->pwm);
-    pwm_set_chan_level(slice_num, PWM_CHAN_A,  duty_cycle);
+    pwm_set_chan_level(slice_num, pwm_gpio_to_channel(this->pwm),  duty_cycle);
 }
 
 // Check operating state of Motor Driver

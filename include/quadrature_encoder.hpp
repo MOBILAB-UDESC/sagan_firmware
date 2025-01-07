@@ -58,7 +58,7 @@ public:
 
 private:
     PIO pio_instance;
-    int8_t sm;
+    uint sm;
 
     float ppr;
     float gear_ratio;

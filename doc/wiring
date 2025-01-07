@@ -12,3 +12,21 @@ GRN - GND encoder
 BLU - VCC encoder
 YLW - A signal
 WHT - B signal
+
+Motor driver - wheel
+RED - VCC
+BLK - GND
+WHT - Enable (PIN 18)
+BRW - Current Sensor (PIN 28)
+GRN - Input A (PIN 21)
+BLU - Input B (PIN 20)
+ORN - PWM (PIN 19)
+
+Motor driver - steering
+RED - VCC
+BLK - GND
+WHT - Enable (PIN 12)
+BRW - Current Sensor (PIN 27)
+GRN - Input A (PIN 14)
+BLU - Input B (PIN 15)
+ORN - PWM (PIN 13)

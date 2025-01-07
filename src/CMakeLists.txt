@@ -26,6 +26,7 @@ target_link_libraries(motordriver
     pico_stdlib
     hardware_adc
     hardware_pwm
+    hardware_gpio
 )
 
 
@@ -34,6 +35,7 @@ target_link_libraries(motordriver
 add_executable(sagan_firmware 
     quadrature_encoder.cpp
     sagan_firmware.cpp 
+
 )
 
 pico_set_program_name(sagan_firmware "sagan_firmware")
@@ -59,7 +61,9 @@ target_include_directories(sagan_firmware
 # Add any user requested libraries
 target_link_libraries(sagan_firmware 
     magenclib
+    motordriver
     pico_stdlib
+    pico_multicore
     hardware_i2c
     hardware_pio
     hardware_timer

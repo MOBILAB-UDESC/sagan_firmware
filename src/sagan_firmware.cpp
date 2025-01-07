@@ -3,11 +3,24 @@
 #include "hardware/pio.h"
 #include "magnetic_encoder.h"
 #include "quadrature_encoder.hpp"
+#include "motor_driver.hpp"
 
 #define SPACES "                              "
 
 // Pins
-#define ENCA_PIN 14 //B channel needs to be connected to the following pin (in this case pin 11)
+#define ENCA_PIN 10 //B channel needs to be connected to the following pin (in this case pin 11)
+// Wheel Motor Driver Pins
+#define ENABLE_WHEEL_DRIVER_PIN 18
+#define CS_WHEEL_DRIVER_PIN 28
+#define INPUT_A_WHEEL_DRIVER_PIN 21
+#define INPUT_B_WHEEL_DRIVER_PIN 20
+#define PWM_WHEEL_DRIVER_PIN 19
+// Steering Motor Driver Pins
+#define ENABLE_STEERING_DRIVER_PIN 12
+#define CS_STEERING_DRIVER_PIN 27
+#define INPUT_A_STEERING_DRIVER_PIN 14
+#define INPUT_B_STEERING_DRIVER_PIN 15
+#define PWM_STEERING_DRIVER_PIN 13
 
 int main()
 {
@@ -16,7 +29,7 @@ int main()
     static as5600_conf_t as5600_conf_bckp;
 
     float sampling_time = 1e-2;
-    QuadratureEncoder encoder(ENCA_PIN, 64.0, 30.0); //30:1 Metal Gearmotor 37Dx68L mm 12V with 64 CPR Encoder (Helical Pinion)
+    QuadratureEncoder encoder(ENCA_PIN, 16, 30.0); //30:1 Metal Gearmotor 37Dx68L mm 12V with 64 CPR Encoder (Helical Pinion)
 
     stdio_init_all();
 
@@ -26,14 +39,27 @@ int main()
     // Setup as5600
     as5600_init(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN, &as5600);
 
+    // Setup motor drivers
+    MotorDriver wheel_driver(ENABLE_WHEEL_DRIVER_PIN, CS_WHEEL_DRIVER_PIN, INPUT_A_WHEEL_DRIVER_PIN, INPUT_B_WHEEL_DRIVER_PIN, PWM_WHEEL_DRIVER_PIN, MotorDriver::FULLBRIDGE);    
+
+    MotorDriver steering_driver(ENABLE_STEERING_DRIVER_PIN, CS_STEERING_DRIVER_PIN, INPUT_A_STEERING_DRIVER_PIN, INPUT_B_STEERING_DRIVER_PIN, PWM_STEERING_DRIVER_PIN, MotorDriver::FULLBRIDGE);  
+
     printf("Hello, world!\n");
 
     while (true) {
         
+        sleep_ms(2000);
         encoder.update(sampling_time);
-
         printf("Raw value: %d | Non-raw value: %d%s\n", as5600_read_raw_angl(&as5600), as5600_read_angl(&as5600), SPACES);
-        printf("Position: %d | Velocity: %d%s\n", encoder.get_position(), encoder.get_velocity(), SPACES);
+        printf("Position: %d | Velocity: %f\n", encoder.get_count(), encoder.get_velocity(), SPACES);
+
+        steering_driver.turnOnMotor(MotorDriver::CLOCKWISE);
+        steering_driver.setMotorOutput(120);
+        sleep_ms(500);
+        steering_driver.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
+        steering_driver.setMotorOutput(120);
+        sleep_ms(500);
+        steering_driver.turnOnMotor(MotorDriver::BRAKETOGND);
         sleep_ms(10);
     }
 }
