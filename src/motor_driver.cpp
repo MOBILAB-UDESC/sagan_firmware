@@ -41,10 +41,11 @@ MotorDriver::MotorDriver(
     // Config PWM
     gpio_set_function(this->pwm, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(this->pwm);
+    pwm_set_clkdiv(slice_num, 25);
     pwm_set_wrap(slice_num, 255);
     pwm_set_chan_level(slice_num, pwm_gpio_to_channel(this->pwm), 1);
     pwm_set_enabled(slice_num, true);
-
+    
     adc_init();
     // Make sure GPIO is high-impedance, no pullups etc/
     // cs number should only be from 26 to 29

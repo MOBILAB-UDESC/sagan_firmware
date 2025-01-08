@@ -4,6 +4,7 @@
 #include "magnetic_encoder.h"
 #include "quadrature_encoder.hpp"
 #include "motor_driver.hpp"
+#include <utility>
 
 #define SPACES "                              "
 
@@ -21,6 +22,8 @@
 #define INPUT_A_STEERING_DRIVER_PIN 14
 #define INPUT_B_STEERING_DRIVER_PIN 15
 #define PWM_STEERING_DRIVER_PIN 13
+
+
 
 int main()
 {
@@ -46,20 +49,28 @@ int main()
 
     printf("Hello, world!\n");
 
+
     while (true) {
         
-        sleep_ms(2000);
-        encoder.update(sampling_time);
-        printf("Raw value: %d | Non-raw value: %d%s\n", as5600_read_raw_angl(&as5600), as5600_read_angl(&as5600), SPACES);
-        printf("Position: %d | Velocity: %f\n", encoder.get_count(), encoder.get_velocity(), SPACES);
+        //printf("Raw value: %d | Non-raw value: %d%s\n", as5600_read_raw_angl(&as5600), as5600_read_angl(&as5600), SPACES);
+        //printf("Position: %d | Velocity: %f\n", encoder.get_count(), encoder.get_velocity(), SPACES);
+        
+        int PWM_PERCENTAGE = 0;
+        int PWM_VALUE = 0;
+        wheel_driver.setMotorOutput(PWM_VALUE);
 
-        steering_driver.turnOnMotor(MotorDriver::CLOCKWISE);
-        steering_driver.setMotorOutput(120);
-        sleep_ms(500);
-        steering_driver.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
-        steering_driver.setMotorOutput(120);
-        sleep_ms(500);
-        steering_driver.turnOnMotor(MotorDriver::BRAKETOGND);
-        sleep_ms(10);
+        sleep_ms(2000);
+
+        for(int j = 0; j <= 100; j += 20){
+            PWM_PERCENTAGE = j;
+            PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
+            wheel_driver.turnOnMotor(MotorDriver::CLOCKWISE);
+            wheel_driver.setMotorOutput(PWM_VALUE);
+            for(int i = 0; i < 500; i++){
+                encoder.update(sampling_time);
+                printf("PWM: %d; Velocity: %f\n", PWM_PERCENTAGE, encoder.get_velocity(), SPACES);
+                sleep_ms(10);
+            }
+        }
     }
 }
