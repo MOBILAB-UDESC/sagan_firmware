@@ -37,11 +37,12 @@ MotorDriver::MotorDriver(
     gpio_init(this->en);
     gpio_set_dir(this->en, GPIO_IN);
 
-    // TODO: verify frequency
     // Config PWM
     gpio_set_function(this->pwm, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(this->pwm);
-    pwm_set_clkdiv(slice_num, 25);
+    // Motor Driver VNH2SP30 has maximum frequency of 20kHz
+    // Set PWM frequency to 480kHz/25 = 19.2kHz 
+    pwm_set_clkdiv(slice_num, 25); 
     pwm_set_wrap(slice_num, 255);
     pwm_set_chan_level(slice_num, pwm_gpio_to_channel(this->pwm), 1);
     pwm_set_enabled(slice_num, true);

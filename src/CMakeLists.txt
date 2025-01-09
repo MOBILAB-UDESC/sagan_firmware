@@ -29,6 +29,19 @@ target_link_libraries(motordriver
     hardware_gpio
 )
 
+add_library(speedcontrol
+   motor_speed_control.cpp
+)
+
+target_include_directories(speedcontrol
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
+
+target_link_libraries(speedcontrol
+    pico_stdlib
+)
+
 
 # Add executable. Default name is the project name, version 0.1
 
@@ -62,6 +75,7 @@ target_include_directories(sagan_firmware
 target_link_libraries(sagan_firmware 
     magenclib
     motordriver
+    speedcontrol
     pico_stdlib
     pico_multicore
     hardware_i2c
