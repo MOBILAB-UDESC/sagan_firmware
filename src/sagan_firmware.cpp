@@ -55,20 +55,18 @@ int main()
     float ANGLE_VELOCITY = 0;
     int ANGLE_ZERO = 0;
 
-
     float kp = 6.1279;
     float ki = 91.2238;
     float targetVel = 0;
     int count = 0;
 
-    float kp2 = 10;
-    float ki2 = 5;
+    float kp2 = 6;
+    float kd2 = 1.5134;
+    float N = 6.3933;
     float targetAngle = 0;
 
-    SpeedControl MotorA(kp, ki, sampling_time, 100);
-    SpeedControl MotorB(kp2, ki2, sampling_time, 100);
-
-
+    SpeedControl MotorA(kp, ki, 0, 0, sampling_time, 100);
+    SpeedControl MotorB(kp2, 0, kd2, N, sampling_time, 100);
 
     while (true) {
         
@@ -80,8 +78,12 @@ int main()
             sleep_ms(3000);
             wheel_driver.turnOnMotor(MotorDriver::BRAKETOGND);
             wheel_driver.setMotorOutput(0);
+            steering_driver.turnOnMotor(MotorDriver::CLOCKWISE);
+            steering_driver.setMotorOutput(255);
+            sleep_ms(1000);            
             steering_driver.turnOnMotor(MotorDriver::BRAKETOGND);
             steering_driver.setMotorOutput(0);
+            
             ANGLE_ZERO = as5600_read_raw_angl(&as5600);
             count = 1;
         }
@@ -92,7 +94,7 @@ int main()
             
             for(int i = 0; i < 500; i++){
                 ANGLE_DEGREES = static_cast<float>(as5600_read_raw_angl(&as5600) - ANGLE_ZERO) * 360.0 / 4096.0;
-                PWM_PERCENTAGE = MotorB.controlActionCalc(targetAngle, ANGLE_DEGREES);
+                PWM_PERCENTAGE = MotorB.controlCalcPD(targetAngle, ANGLE_DEGREES);
                 printf("Target Angle: %f |  Actual Angle: %f | Controller Effort: %f\n", targetAngle, ANGLE_DEGREES, PWM_PERCENTAGE, SPACES);
 
                 if (PWM_PERCENTAGE >= 100 || PWM_PERCENTAGE <= -100){
@@ -162,7 +164,7 @@ int main()
         // }
 
         // encoder.update(sampling_time);
-        // PWM_PERCENTAGE = MotorA.controlActionCalc(targetVel, encoder.get_velocity());
+        // PWM_PERCENTAGE = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
 
         // printf("Target Velocity: %f |  Actual Velocity: %f | Controller Effort: %f\n", targetVel, encoder.get_velocity(), PWM_PERCENTAGE, SPACES);
         
@@ -196,7 +198,7 @@ int main()
             
         //     for(int i = 0; i < 500; i++){
         //         encoder.update(sampling_time);
-        //         PWM_PERCENTAGE = MotorA.controlActionCalc(targetVel, encoder.get_velocity());
+        //         PWM_PERCENTAGE = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
         //         printf("Target Velocity: %f |  Actual Velocity: %f | Controller Effort: %f\n", targetVel, encoder.get_velocity(), PWM_PERCENTAGE, SPACES);
 
         //         if (PWM_PERCENTAGE >= 100 || PWM_PERCENTAGE <= -100){
