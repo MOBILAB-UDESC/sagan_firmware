@@ -85,9 +85,12 @@ bool MotorDriver::motorDriverIsFaulty()
 
 // Check motor current draw
 // Returns: current draw value mapped from 0 to 1024
-uint16_t MotorDriver::checkMotorCurrentDraw()
+float MotorDriver::checkMotorCurrentDraw()
 {
-    return adc_read();
+    adc_select_input(this->cs-26);
+    const float conversion_factor = 3.3f / 4096;
+    float result = conversion_factor * (float)adc_read();
+    return result;
 }
 
 // Turn off motor

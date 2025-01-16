@@ -6,6 +6,7 @@
 #include "motor_driver.hpp"
 #include "motor_speed_control.hpp"
 #include <utility>
+#include <stdint.h>
 
 #define SPACES "                              "
 
@@ -23,6 +24,31 @@
 #define INPUT_A_STEERING_DRIVER_PIN 14
 #define INPUT_B_STEERING_DRIVER_PIN 15
 #define PWM_STEERING_DRIVER_PIN 13
+
+void motor_update(float PWM_INPUT, MotorDriver Motor_select){
+    float PWM_VALUE = 0.0;
+    if (PWM_INPUT >= 100 || PWM_INPUT <= -100){
+        if(PWM_INPUT > 0){
+            PWM_INPUT = 100;
+            PWM_VALUE = round(PWM_INPUT * 255 / 100);
+            Motor_select.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
+            Motor_select.setMotorOutput(PWM_VALUE);
+        } else {
+            PWM_INPUT = -100;
+            PWM_VALUE = round(-PWM_INPUT * 255 / 100);
+            Motor_select.turnOnMotor(MotorDriver::CLOCKWISE);
+            Motor_select.setMotorOutput(PWM_VALUE);
+        } 
+    } else if( PWM_INPUT > 0){
+        PWM_VALUE = round(PWM_INPUT * 255 / 100);
+        Motor_select.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
+        Motor_select.setMotorOutput(PWM_VALUE);
+    } else {
+        PWM_VALUE = round(-PWM_INPUT * 255 / 100);
+        Motor_select.turnOnMotor(MotorDriver::CLOCKWISE);
+        Motor_select.setMotorOutput(PWM_VALUE);
+    }
+}
 
 
 int main()
@@ -42,13 +68,12 @@ int main()
     // Setup as5600
     as5600_init(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN, &as5600);
 
-    // Setup motor drivers
-    MotorDriver wheel_driver(ENABLE_WHEEL_DRIVER_PIN, CS_WHEEL_DRIVER_PIN, INPUT_A_WHEEL_DRIVER_PIN, INPUT_B_WHEEL_DRIVER_PIN, PWM_WHEEL_DRIVER_PIN, MotorDriver::FULLBRIDGE);    
-
+    // Setup motor drivers 
     MotorDriver steering_driver(ENABLE_STEERING_DRIVER_PIN, CS_STEERING_DRIVER_PIN, INPUT_A_STEERING_DRIVER_PIN, INPUT_B_STEERING_DRIVER_PIN, PWM_STEERING_DRIVER_PIN, MotorDriver::FULLBRIDGE);  
+    MotorDriver wheel_driver(ENABLE_WHEEL_DRIVER_PIN, CS_WHEEL_DRIVER_PIN, INPUT_A_WHEEL_DRIVER_PIN, INPUT_B_WHEEL_DRIVER_PIN, PWM_WHEEL_DRIVER_PIN, MotorDriver::FULLBRIDGE);
 
-    float PWM_PERCENTAGE = 0;
-    int PWM_VALUE = 0;
+    float PWM_PERCENTAGE_STEERING = 0;
+    float PWM_PERCENTAGE_WHEEL = 0;
 
     float ANGLE_DEGREES = 0;
     float PREV_ANGLE_DEGREES = 0;
@@ -57,25 +82,28 @@ int main()
 
     float kp = 6.1279;
     float ki = 91.2238;
+    float kd = 0;
+    float N = 0;
     float targetVel = 0;
-    int count = 0;
 
-    float kp2 = 6;
-    float kd2 = 1.5134;
-    float N = 6.3933;
+    float kp2 = 20;
+    float ki2 = 10;
+    float kd2 = 0;
+    float N2= 0;
     float targetAngle = 0;
 
-    SpeedControl MotorA(kp, ki, 0, 0, sampling_time, 100);
-    SpeedControl MotorB(kp2, 0, kd2, N, sampling_time, 100);
+    int count = 0;
+
+    float wheel_current = 0;
+    float steering_current = 0;
+
+    SpeedControl MotorA(kp, ki, kd, N, sampling_time, 100);
+    SpeedControl MotorB(kp2, ki2, kd2, N2, sampling_time, 100);
 
     while (true) {
         
-        // encoder.update(sampling_time);
-        //printf("Raw value: %d | Non-raw value: %d%s\n", as5600_read_raw_angl(&as5600), as5600_read_angl(&as5600), SPACES);
-        //printf("Position: %d | Velocity: %f\n", encoder.get_count(), encoder.get_velocity(), SPACES);
-        
         if (count == 0){
-            sleep_ms(3000);
+            sleep_ms(1000);
             wheel_driver.turnOnMotor(MotorDriver::BRAKETOGND);
             wheel_driver.setMotorOutput(0);
             steering_driver.turnOnMotor(MotorDriver::CLOCKWISE);
@@ -88,160 +116,56 @@ int main()
             count = 1;
         }
 
-        for(int j = 0; j <= 180; j += 10){
+        for(int j = 0; j <= 180; j += 60){
 
             targetAngle = j;
+            targetVel = j / 5;
             
             for(int i = 0; i < 500; i++){
                 ANGLE_DEGREES = static_cast<float>(as5600_read_raw_angl(&as5600) - ANGLE_ZERO) * 360.0 / 4096.0;
-                PWM_PERCENTAGE = MotorB.controlCalcPD(targetAngle, ANGLE_DEGREES);
-                printf("Target Angle: %f |  Actual Angle: %f | Controller Effort: %f\n", targetAngle, ANGLE_DEGREES, PWM_PERCENTAGE, SPACES);
+                encoder.update(sampling_time);
+                
+                PWM_PERCENTAGE_WHEEL = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
+                PWM_PERCENTAGE_STEERING = MotorB.controlCalcPI(targetAngle, ANGLE_DEGREES);
 
-                if (PWM_PERCENTAGE >= 100 || PWM_PERCENTAGE <= -100){
-                    if(PWM_PERCENTAGE > 0){
-                        PWM_PERCENTAGE = 100;
-                        PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
-                        steering_driver.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
-                        steering_driver.setMotorOutput(PWM_VALUE);
-                    } else {
-                        PWM_PERCENTAGE = -100;
-                        PWM_VALUE = round(-PWM_PERCENTAGE * 255 / 100);
-                        steering_driver.turnOnMotor(MotorDriver::CLOCKWISE);
-                        steering_driver.setMotorOutput(PWM_VALUE);
-                    } 
-                } else if( PWM_PERCENTAGE > 0){
-                    PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
-                    steering_driver.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
-                    steering_driver.setMotorOutput(PWM_VALUE);
-                } else {
-                    PWM_VALUE = round(-PWM_PERCENTAGE * 255 / 100);
-                    steering_driver.turnOnMotor(MotorDriver::CLOCKWISE);
-                    steering_driver.setMotorOutput(PWM_VALUE);
-                }
+                wheel_current = wheel_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
+                steering_current = steering_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
+
+                //printf("Target Angle: %.2f |  Actual Angle: %.2f |  Steering Controller Effort: %.2f | Target Vel: %.2f | Actual Vel: %.2f | Wheel Controller Effort %.2f\n", targetAngle, ANGLE_DEGREES, PWM_PERCENTAGE_STEERING, targetVel, encoder.get_velocity(), PWM_PERCENTAGE_WHEEL, SPACES);
+                printf("Wheel Motor Current : %f | Steering Motor Current %f\n", wheel_current, steering_current, SPACES);
+                motor_update(PWM_PERCENTAGE_STEERING, steering_driver);
+                motor_update(PWM_PERCENTAGE_WHEEL, wheel_driver);                  
+                sleep_ms(10);
+            }
+        }
+
+        for(int j = 180; j >= 0; j -= 60){
+
+            targetAngle = j;
+            targetVel = j / 5;
+            
+            for(int i = 0; i < 500; i++){
+                ANGLE_DEGREES = static_cast<float>(as5600_read_raw_angl(&as5600) - ANGLE_ZERO) * 360.0 / 4096.0;
+                encoder.update(sampling_time);
+                
+                PWM_PERCENTAGE_WHEEL = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
+                PWM_PERCENTAGE_STEERING = MotorB.controlCalcPI(targetAngle, ANGLE_DEGREES);
+
+                wheel_current = wheel_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
+                steering_current = steering_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
+                
+                //printf("Target Angle: %.2f |  Actual Angle: %.2f |  Steering Controller Effort: %.2f | Target Vel: %.2f | Actual Vel: %.2f | Wheel Controller Effort %.2f\n", targetAngle, ANGLE_DEGREES, PWM_PERCENTAGE_STEERING, targetVel, encoder.get_velocity(), PWM_PERCENTAGE_WHEEL, SPACES);
+                printf("Wheel Motor Current : %f | Steering Motor Current %f\n", wheel_current, steering_current, SPACES);
+                motor_update(PWM_PERCENTAGE_STEERING, steering_driver);
+                motor_update(PWM_PERCENTAGE_WHEEL, wheel_driver);                  
                 sleep_ms(10);
             }
         }
 
         steering_driver.turnOnMotor(MotorDriver::BRAKETOGND);
         steering_driver.setMotorOutput(0);
+        wheel_driver.turnOnMotor(MotorDriver::BRAKETOVCC);
+        wheel_driver.setMotorOutput(0);
         sleep_ms(5000);
-        
-
-
-        // for(float j = 40.0; j <= 100.0; j += 20.0){
-        //     steering_driver.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
-        //     PWM_PERCENTAGE = j;
-        //     PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
-        //     steering_driver.setMotorOutput(PWM_VALUE);
-            
-        //     while ( ANGLE_DEGREES < 180){
-        //         PREV_ANGLE_DEGREES = ANGLE_DEGREES;
-        //         ANGLE_DEGREES = static_cast<float>(as5600_read_raw_angl(&as5600) - ANGLE_ZERO) * 360.0 / 4096.0;
-        //         ANGLE_VELOCITY = (ANGLE_DEGREES - PREV_ANGLE_DEGREES) / sampling_time;
-        //         printf("Angle in Degrees: %f || Angle velocity: %f || PWM Value: %f\n", ANGLE_DEGREES,ANGLE_VELOCITY, PWM_PERCENTAGE, SPACES);
-        //         sleep_ms(10);
-        //     }
-
-        //     wheel_driver.turnOnMotor(MotorDriver::BRAKETOGND);
-        //     wheel_driver.setMotorOutput(0);
-        //     sleep_ms(1000);
-
-        //     steering_driver.turnOnMotor(MotorDriver::CLOCKWISE);
-        //     PWM_PERCENTAGE = 40;
-        //     PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
-        //     steering_driver.setMotorOutput(PWM_VALUE);
-
-        //     while ( ANGLE_DEGREES > 1){
-        //         PREV_ANGLE_DEGREES = ANGLE_DEGREES;
-        //         ANGLE_DEGREES = static_cast<float>(as5600_read_raw_angl(&as5600) - ANGLE_ZERO) * 360.0 / 4096.0;
-        //         ANGLE_VELOCITY = (ANGLE_DEGREES - PREV_ANGLE_DEGREES) / sampling_time;
-        //         //printf("Angle in Degrees: %f || Angle velocity: %f || PWM Value: %f\n", ANGLE_DEGREES,ANGLE_VELOCITY, PWM_PERCENTAGE, SPACES);
-        //     }
-            
-        //     wheel_driver.turnOnMotor(MotorDriver::BRAKETOGND);
-        //     wheel_driver.setMotorOutput(0);
-        //     sleep_ms(1000);
-        // }
-
-        // encoder.update(sampling_time);
-        // PWM_PERCENTAGE = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
-
-        // printf("Target Velocity: %f |  Actual Velocity: %f | Controller Effort: %f\n", targetVel, encoder.get_velocity(), PWM_PERCENTAGE, SPACES);
-        
-        // if (PWM_PERCENTAGE >= 100 || PWM_PERCENTAGE <= -100){
-        //     if(PWM_PERCENTAGE > 0){
-        //         PWM_PERCENTAGE = 100;
-        //         PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
-        //         wheel_driver.turnOnMotor(MotorDriver::CLOCKWISE);
-        //         wheel_driver.setMotorOutput(PWM_VALUE);
-        //     } else {
-        //         PWM_PERCENTAGE = -100;
-        //         PWM_VALUE = round(-PWM_PERCENTAGE * 255 / 100);
-        //         wheel_driver.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
-        //         wheel_driver.setMotorOutput(PWM_VALUE);
-        //     } 
-        // } else if( PWM_PERCENTAGE > 0){
-        //     PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
-        //     wheel_driver.turnOnMotor(MotorDriver::CLOCKWISE);
-        //     wheel_driver.setMotorOutput(PWM_VALUE);
-        // } else {
-        //     PWM_VALUE = round(-PWM_PERCENTAGE * 255 / 100);
-        //     wheel_driver.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
-        //     wheel_driver.setMotorOutput(PWM_VALUE);
-        // }
-
-        // sleep_ms(10);
-
-        // for(int j = 0; j <= 40; j += 10){
-
-        //     targetVel = j;
-            
-        //     for(int i = 0; i < 500; i++){
-        //         encoder.update(sampling_time);
-        //         PWM_PERCENTAGE = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
-        //         printf("Target Velocity: %f |  Actual Velocity: %f | Controller Effort: %f\n", targetVel, encoder.get_velocity(), PWM_PERCENTAGE, SPACES);
-
-        //         if (PWM_PERCENTAGE >= 100 || PWM_PERCENTAGE <= -100){
-        //             if(PWM_PERCENTAGE > 0){
-        //                 PWM_PERCENTAGE = 100;
-        //                 PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
-        //                 wheel_driver.turnOnMotor(MotorDriver::CLOCKWISE);
-        //                 wheel_driver.setMotorOutput(PWM_VALUE);
-        //             } else {
-        //                 PWM_PERCENTAGE = -100;
-        //                 PWM_VALUE = round(-PWM_PERCENTAGE * 255 / 100);
-        //                 wheel_driver.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
-        //                 wheel_driver.setMotorOutput(PWM_VALUE);
-        //             } 
-        //         } else if( PWM_PERCENTAGE > 0){
-        //             PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
-        //             wheel_driver.turnOnMotor(MotorDriver::CLOCKWISE);
-        //             wheel_driver.setMotorOutput(PWM_VALUE);
-        //         } else {
-        //             PWM_VALUE = round(-PWM_PERCENTAGE * 255 / 100);
-        //             wheel_driver.turnOnMotor(MotorDriver::COUNTERCLOCKWISE);
-        //             wheel_driver.setMotorOutput(PWM_VALUE);
-        //         }
-        //         sleep_ms(10);
-        //     }
-        // }
-
-        // wheel_driver.setMotorOutput(0);
-        // sleep_ms(2000);
     }
-        
-        // wheel_driver.setMotorOutput(PWM_VALUE);
-        // sleep_ms(2000);
-
-        // for(int j = 0; j <= 40; j += 10){
-        //     PWM_PERCENTAGE = j;
-        //     PWM_VALUE = round(PWM_PERCENTAGE * 255 / 100);
-        //     wheel_driver.turnOnMotor(MotorDriver::CLOCKWISE);
-        //     wheel_driver.setMotorOutput(PWM_VALUE);
-        //     for(int i = 0; i < 500; i++){
-        //         encoder.update(sampling_time);
-        //         printf("PWM: %d; Velocity: %f\n", PWM_PERCENTAGE, encoder.get_velocity(), SPACES);
-        //         sleep_ms(10);
-        //     }
-        // }
 }

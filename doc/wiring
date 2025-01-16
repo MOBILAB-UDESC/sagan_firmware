@@ -18,8 +18,8 @@ RED - VCC
 BLK - GND
 WHT - Enable (PIN 18)
 BRW - Current Sensor (PIN 28)
-GRN - Input A (PIN 21)
-BLU - Input B (PIN 20)
+GRN - Input A (PIN 20)
+BLU - Input B (PIN 21)
 ORN - PWM (PIN 19)
 
 Motor driver - steering

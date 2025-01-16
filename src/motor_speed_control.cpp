@@ -13,7 +13,6 @@ SpeedControl::SpeedControl(float kp, float ki, float kd, float N, float sampling
     this->sampling_time = sampling_time;
     this->saturation = saturation;
     this->actualPos_prev = 0;
-    printf("Speed Control Inicialized");
 }
 
 float SpeedControl::controlCalcPI(float targetVel, float actualVel){
@@ -25,6 +24,8 @@ float SpeedControl::controlCalcPI(float targetVel, float actualVel){
     this->u_prev = u;
 
     if( u_prev >= saturation && targetVel > actualVel){
+        e_i = 0;
+    } else if(u_prev <= -saturation && targetVel < actualVel) {
         e_i = 0;
     } else {
         e_i = targetVel - actualVel;

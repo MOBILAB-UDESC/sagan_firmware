@@ -40,7 +40,7 @@ public:
 
     bool motorDriverIsFaulty();
 
-    uint16_t checkMotorCurrentDraw();
+    float checkMotorCurrentDraw();
 
     void turnOffMotor();
 
