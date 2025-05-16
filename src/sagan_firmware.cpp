@@ -50,14 +50,36 @@ void motor_update(float PWM_INPUT, MotorDriver Motor_select){
     }
 }
 
+#define motor_data_acquisition() \
+    for(int pwm_valor = 0; pwm_valor <= 100; pwm_valor += 20){  \
+        for(int i = 0; i < 1000; i++){ \
+            encoder.update(sampling_time); \
+            PWM_PERCENTAGE_WHEEL = pwm_valor; \
+            printf("Actual Vel: %.4f | Wheel PWM %.2f\n", encoder.get_velocity(), PWM_PERCENTAGE_WHEEL, SPACES); \
+            motor_update(PWM_PERCENTAGE_WHEEL, wheel_driver); \
+            sleep_ms(5); \
+        } \
+    } \
 
-int main()
+#define motor_current_data_acquisition() \
+    for(int pwm_valor = 0; pwm_valor <= 100; pwm_valor += 20){  \
+        for(int i = 0; i < 5000; i++){ \
+            encoder.update(sampling_time); \
+            PWM_PERCENTAGE_WHEEL = pwm_valor; \
+            wheel_current = -0.1525 + wheel_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0; \
+            printf("Actual Vel: %.4f | Wheel PWM %.2f | Wheel Motor Current : %.2f\n", encoder.get_velocity(), PWM_PERCENTAGE_WHEEL, wheel_current, SPACES); \
+            motor_update(PWM_PERCENTAGE_WHEEL, wheel_driver); \
+            sleep_ms(1); \
+        } \
+    } \
+
+    int main()
 {
     as5600_t as5600 = { 0 };
     static as5600_conf_t as5600_conf;
     static as5600_conf_t as5600_conf_bckp;
 
-    float sampling_time = 1e-2;
+    float sampling_time = 1e-3;
     QuadratureEncoder encoder(ENCA_PIN, 16, 30.0); //30:1 Metal Gearmotor 37Dx68L mm 12V with 64 CPR Encoder (Helical Pinion)
 
     stdio_init_all();
@@ -86,7 +108,7 @@ int main()
     float N = 0;
     float targetVel = 0;
 
-    float kp2 = 20;
+    float kp2 = 15;
     float ki2 = 10;
     float kd2 = 0;
     float N2= 0;
@@ -116,51 +138,56 @@ int main()
             count = 1;
         }
 
-        for(int j = 0; j <= 180; j += 60){
+        motor_current_data_acquisition();
 
-            targetAngle = j;
-            targetVel = j / 5;
+
+
+        // for(int j = 0; j <= 180; j += 60){
+
+        //     targetAngle = j;
+        //     targetVel = j / 5;
             
-            for(int i = 0; i < 500; i++){
-                ANGLE_DEGREES = static_cast<float>(as5600_read_raw_angl(&as5600) - ANGLE_ZERO) * 360.0 / 4096.0;
-                encoder.update(sampling_time);
+        //     for(int i = 0; i < 500; i++){
+        //         ANGLE_DEGREES = static_cast<float>(as5600_read_raw_angl(&as5600) - ANGLE_ZERO) * 360.0 / 4096.0;
+        //         encoder.update(sampling_time);
                 
-                PWM_PERCENTAGE_WHEEL = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
-                PWM_PERCENTAGE_STEERING = MotorB.controlCalcPI(targetAngle, ANGLE_DEGREES);
+        //         PWM_PERCENTAGE_WHEEL = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
+        //         PWM_PERCENTAGE_STEERING = MotorB.controlCalcPI(targetAngle, ANGLE_DEGREES);
 
-                wheel_current = wheel_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
-                steering_current = steering_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
+        //         wheel_current = -0.1525 + wheel_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
+        //         steering_current = -0.1525 + steering_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
 
-                //printf("Target Angle: %.2f |  Actual Angle: %.2f |  Steering Controller Effort: %.2f | Target Vel: %.2f | Actual Vel: %.2f | Wheel Controller Effort %.2f\n", targetAngle, ANGLE_DEGREES, PWM_PERCENTAGE_STEERING, targetVel, encoder.get_velocity(), PWM_PERCENTAGE_WHEEL, SPACES);
-                printf("Wheel Motor Current : %f | Steering Motor Current %f\n", wheel_current, steering_current, SPACES);
-                motor_update(PWM_PERCENTAGE_STEERING, steering_driver);
-                motor_update(PWM_PERCENTAGE_WHEEL, wheel_driver);                  
-                sleep_ms(10);
-            }
-        }
+        //         //printf("Target Angle: %.2f |  Actual Angle: %.2f |  Steering Controller Effort: %.2f | Target Vel: %.2f | Actual Vel: %.2f | Wheel Controller Effort %.2f\n", targetAngle, ANGLE_DEGREES, PWM_PERCENTAGE_STEERING, targetVel, encoder.get_velocity(), PWM_PERCENTAGE_WHEEL, SPACES);
+        //         //printf("Wheel Motor Current : %f | Steering Motor Current %f\n", wheel_current, steering_current, SPACES);
+        //         printf("Wheel Motor Current : %f | Wheel PWM: %.2f | Steering Motor Current %f | Steering PWM: %.2f\n", wheel_current, PWM_PERCENTAGE_WHEEL, steering_current, PWM_PERCENTAGE_STEERING, SPACES);
+        //         motor_update(PWM_PERCENTAGE_STEERING, steering_driver);
+        //         motor_update(PWM_PERCENTAGE_WHEEL, wheel_driver);                  
+        //         sleep_ms(10);
+        //     }
+        // }
 
-        for(int j = 180; j >= 0; j -= 60){
+        // for(int j = 180; j >= 0; j -= 60){
 
-            targetAngle = j;
-            targetVel = j / 5;
+        //     targetAngle = j;
+        //     targetVel = j / 5;
             
-            for(int i = 0; i < 500; i++){
-                ANGLE_DEGREES = static_cast<float>(as5600_read_raw_angl(&as5600) - ANGLE_ZERO) * 360.0 / 4096.0;
-                encoder.update(sampling_time);
+        //     for(int i = 0; i < 500; i++){
+        //         ANGLE_DEGREES = static_cast<float>(as5600_read_raw_angl(&as5600) - ANGLE_ZERO) * 360.0 / 4096.0;
+        //         encoder.update(sampling_time);
                 
-                PWM_PERCENTAGE_WHEEL = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
-                PWM_PERCENTAGE_STEERING = MotorB.controlCalcPI(targetAngle, ANGLE_DEGREES);
+        //         PWM_PERCENTAGE_WHEEL = MotorA.controlCalcPI(targetVel, encoder.get_velocity());
+        //         PWM_PERCENTAGE_STEERING = MotorB.controlCalcPI(targetAngle, ANGLE_DEGREES);
 
-                wheel_current = wheel_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
-                steering_current = steering_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
+        //         wheel_current = wheel_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
+        //         steering_current = steering_driver.checkMotorCurrentDraw() * 11370.0 / 1500.0;
                 
-                //printf("Target Angle: %.2f |  Actual Angle: %.2f |  Steering Controller Effort: %.2f | Target Vel: %.2f | Actual Vel: %.2f | Wheel Controller Effort %.2f\n", targetAngle, ANGLE_DEGREES, PWM_PERCENTAGE_STEERING, targetVel, encoder.get_velocity(), PWM_PERCENTAGE_WHEEL, SPACES);
-                printf("Wheel Motor Current : %f | Steering Motor Current %f\n", wheel_current, steering_current, SPACES);
-                motor_update(PWM_PERCENTAGE_STEERING, steering_driver);
-                motor_update(PWM_PERCENTAGE_WHEEL, wheel_driver);                  
-                sleep_ms(10);
-            }
-        }
+        //         //printf("Target Angle: %.2f |  Actual Angle: %.2f |  Steering Controller Effort: %.2f | Target Vel: %.2f | Actual Vel: %.2f | Wheel Controller Effort %.2f\n", targetAngle, ANGLE_DEGREES, PWM_PERCENTAGE_STEERING, targetVel, encoder.get_velocity(), PWM_PERCENTAGE_WHEEL, SPACES);
+        //         printf("Wheel Motor Current : %f | Wheel PWM: %.2f | Steering Motor Current %f | Steering PWM: %.2f\n", wheel_current, PWM_PERCENTAGE_WHEEL, steering_current, PWM_PERCENTAGE_STEERING, SPACES);
+        //         motor_update(PWM_PERCENTAGE_STEERING, steering_driver);
+        //         motor_update(PWM_PERCENTAGE_WHEEL, wheel_driver);                  
+        //         sleep_ms(10);
+        //     }
+        // }
 
         steering_driver.turnOnMotor(MotorDriver::BRAKETOGND);
         steering_driver.setMotorOutput(0);
