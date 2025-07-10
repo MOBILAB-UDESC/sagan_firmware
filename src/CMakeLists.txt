@@ -1,4 +1,5 @@
-
+cmake_minimum_required(VERSION 3.31)
+# Set this before your executable is defined
 add_library(magenclib
    magnetic_encoder.c
 )
@@ -42,13 +43,26 @@ target_link_libraries(speedcontrol
     pico_stdlib
 )
 
+add_library(saganfoccontrol
+    sagan_foc_control.cpp
+)
+
+target_include_directories(saganfoccontrol
+    PUBLIC 
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
+
+target_link_libraries(saganfoccontrol
+    pico_stdlib 
+    hardware_pwm
+    magenclib
+)
 
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(sagan_firmware 
     quadrature_encoder.cpp
     sagan_firmware.cpp 
-
 )
 
 pico_set_program_name(sagan_firmware "sagan_firmware")
@@ -76,6 +90,7 @@ target_link_libraries(sagan_firmware
     magenclib
     motordriver
     speedcontrol
+    saganfoccontrol
     pico_stdlib
     pico_multicore
     hardware_i2c

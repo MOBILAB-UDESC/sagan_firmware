@@ -30,3 +30,11 @@ BRW - Current Sensor (PIN 27)
 GRN - Input A (PIN 14)
 BLU - Input B (PIN 15)
 ORN - PWM (PIN 13)
+
+Bushless Motor Driver 
+RED - VCC
+BLK - GND
+BLU - Enable (PIN 22)
+YLW - Input 1 (PIN 9)
+GRN - Input 2 (PIN 8)
+WHT - Input 3 (PIN 7)
