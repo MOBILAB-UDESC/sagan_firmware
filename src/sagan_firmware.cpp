@@ -2,7 +2,10 @@
 #include <utility>
 #include <stdint.h>
 #include "pico/stdlib.h"
+#include "pico/binary_info.h"
 #include "hardware/pio.h"
+#include "hardware/i2c.h"
+#include "pico/i2c_slave.h"
 
 #include "magnetic_encoder.h"
 #include "quadrature_encoder.hpp"
@@ -20,7 +23,6 @@
 #define INPUT_A_WHEEL_DRIVER_PIN 21
 #define INPUT_B_WHEEL_DRIVER_PIN 20
 #define PWM_WHEEL_DRIVER_PIN 19
-
 
 void motor_update(float PWM_INPUT, MotorDriver Motor_select)
 {
@@ -83,27 +85,65 @@ void motor_update(float PWM_INPUT, MotorDriver Motor_select)
         }                                                                                                                                                    \
     }
 
+// Our handler is called from the I2C ISR, so it must complete quickly. Blocking calls /
+// printing to stdio may interfere with interrupt handling.
+static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
+    switch (event) {
+    case I2C_SLAVE_RECEIVE: // master has written some data
+        i2c_read_raw_blocking(i2c0, &message, 1);
+        printf("Message Recived %i \n", message);
+        break;
+    case I2C_SLAVE_REQUEST: // master is requesting data
+        // load from memory
+        uint8_t dummy_data;
+        i2c_write_raw_blocking (i2c0, &dummy_data, 1);
+        break;
+    case I2C_SLAVE_FINISH: // master has signalled Stop / Restart
+        printf("Master command to stop");
+        break;
+    default:
+        break;
+    }
+}
+
 int main()
 {
     float sampling_time = 10e-3;
     QuadratureEncoder encoder(ENCA_PIN, 16, 30.0); // 30:1 Metal Gearmotor 37Dx68L mm 12V with 64 CPR Encoder (Helical Pinion)
 
-    as5600_t as5600 = {0};
-    static as5600_conf_t as5600_conf;
-    static as5600_conf_t as5600_conf_bckp;
-
     stdio_init_all();
 
-    // Setup i2c
-    i2c_init(i2c_default, 400 * 1000);
+    i2c_inst_t *i2c = i2c0;
 
-    // Setup as5600
-    as5600_init(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN, &as5600);
+    const uint SDA_PIN = 4;
+    const uint SCL_PIN = 5;
+
+    gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(SDA_PIN);
+    gpio_pull_up(SCL_PIN);
+
+    //Setting the board LED ON
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+
+
+    // Setup i2c
+    i2c_init(i2c0, 400 * 1000);
+    bool slave_mode = false;
+
+    //Slave-mode
+    i2c_slave_init(i2c_default, 0x15, &i2c_slave_handler);
+    slave_mode = true;
+
+    while(slave_mode){
+        sleep_ms(1);
+        if ()
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+    }
 
     // Setup motor drivers
     MotorDriver wheel_driver(ENABLE_WHEEL_DRIVER_PIN, CS_WHEEL_DRIVER_PIN, INPUT_A_WHEEL_DRIVER_PIN, INPUT_B_WHEEL_DRIVER_PIN, PWM_WHEEL_DRIVER_PIN, MotorDriver::FULLBRIDGE);
-
-    float PWM_PERCENTAGE_WHEEL = 0;
 
     float kp = 5;
     float ki = 8;
@@ -111,7 +151,6 @@ int main()
     float N = 0;
     float targetVel = 0;
 
-    int count = 0;
     uint64_t actual_time = 0;
     uint64_t prev_time = 0;
 
@@ -121,76 +160,32 @@ int main()
 
     SpeedControl MotorA(kp, ki, kd, N, sampling_time, 100);
 
-    // bldc init
-    stdio_init_all();
+    //Initializing Code
+    wheel_driver.turnOnMotor(MotorDriver::BRAKETOGND);
+    wheel_driver.setMotorOutput(0);
+    motor_update(0, wheel_driver);
 
-    SaganFOCControl::Config motor_config = {
-        .pwm_pins = {7, 8, 9}, // PWM pins for phases U, V, W
-        .enable_pin = 22,
-        .pole_pairs = 7,
-        .angle_p_gain = 500.0f, 
-        .field_p_gain = 5.0f
-    };
+    sleep_ms(1000);
+    printf("Initializing code...\n");
+    sleep_ms(1000);
+    printf("3\n");
+    sleep_ms(1000);
+    printf("2\n");
+    sleep_ms(1000);
+    printf("1\n");
+    sleep_ms(1000);
+    printf("Finalized \n");
+    sleep_ms(1000);
 
-    SaganFOCControl BLDC(motor_config, as5600);
-        
-    BLDC.set_target_angle(M_PI / 2.0); // Set initial target
+    uint8_t i2c_message = 0x01;
+    int ret = i2c_write_blocking(i2c0, 0x15, &i2c_message, 1, false);
 
-    while (true)
-    {
-
-        if (count == 0)
-        {
-            wheel_driver.turnOnMotor(MotorDriver::BRAKETOGND);
-            wheel_driver.setMotorOutput(0);
-            motor_update(0, wheel_driver);
-            
-            sleep_ms(1000);
-            printf("Initializing code...\n");
-            sleep_ms(1000);
-            printf("3\n");
-            sleep_ms(1000);
-            printf("2\n");
-            sleep_ms(1000);
-            printf("1\n");
-            sleep_ms(1000);
-
-            BLDC.calibrate();
-
-            printf("Finalized \n");
-            sleep_ms(1000);
-
-            count = 1;
-        }
-        float angle_target = M_PI / 2.0;
-        BLDC.set_target_angle(angle_target); // Set initial target
-        for (int index = 0; index <= 5000; index++){
-            BLDC.update();
-            printf("BLDC Position %.2f | BLDC Target %.2f\n", BLDC.get_position_rad(), angle_target, SPACES);
-            sleep_ms(1);
-        }
-        
-        // angle_target = 2 * M_PI; 
-        // motor.set_target_angle(angle_target); 
-        // for (int index = 0; index <= 5000; index++){
-        //     motor.update();
-        //     printf("BLDC Position %.2f | BLDC Target %.2f\n", motor.get_position_rad(), angle_target, SPACES);
-        //     sleep_ms(1);
-        // }
-
-        // angle_target = 10 * M_PI; 
-        // motor.set_target_angle(angle_target);
-        // for (int index = 0; index <= 5000; index++){
-        //     motor.update();
-        //     printf("BLDC Position %.2f | BLDC Target %.2f\n", motor.get_position_rad(), angle_target, SPACES);
-        //     sleep_ms(1);
-        // }
-        
-
-        // wheel_driver.turnOnMotor(MotorDriver::BRAKETOVCC);
-        // wheel_driver.setMotorOutput(0);
-        // sleep_ms(10000);
+    if (ret = 1){
+        printf("Tudo Certo");
+    } else {
+        printf("Tudo Errado");
     }
+    sleep_ms(1000);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -275,4 +270,14 @@ int main()
         //         //printf("%.2f,%.2f,%.2f\n",PWM_PERCENTAGE_WHEEL, wheel_current, encoder.get_velocity(), SPACES);
         //         motor_update(PWM_PERCENTAGE_WHEEL, wheel_driver);
         //     }
+        // }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // angle_target = -1.0;
+        // BLDC.set_target_angle(angle_target); // Set initial target
+        // BLDC2.set_target_angle(angle_target); // Set initial target
+        // for (int index = 0; index <= 5000; index++){
+        //     BLDC.update();
+        //     BLDC2.update();
+        //     printf("BLDC Position %.2f | BLDC Target %.2f\n", BLDC.get_position_rad(), angle_target, SPACES);
+        //     sleep_ms(1);
         // }

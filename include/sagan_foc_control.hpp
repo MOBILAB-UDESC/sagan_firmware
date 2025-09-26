@@ -23,6 +23,8 @@ public:
     // MODIFICATION: No longer needs a function pointer
     void calibrate();
 
+    void new_calibrate();
+
     // MODIFICATION: No longer needs the current angle passed in
     void update();
     
@@ -31,9 +33,11 @@ public:
 
     void set_target_angle(float target_rad);
 
+    void space_vector_modulation(float v_alpha, float v_beta);
+
 private:
     void init_pwm();
-    void space_vector_modulation(float v_alpha, float v_beta);
+    
 
     // --- Member Variables ---
     Config config;

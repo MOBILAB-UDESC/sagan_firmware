@@ -34,9 +34,9 @@ void SaganFOCControl::calibrate() {
     sleep_ms(3000);
 
     for (int i = 0; i < config.pole_pairs; i++) {
-        for (float electrical_angle = 0.0; electrical_angle <= 2 * M_PI; electrical_angle += M_PI / 1024) {
-            space_vector_modulation(0.3 * cosf(electrical_angle), 0.3 * sinf(electrical_angle));
-            sleep_ms(1);
+        for (float electrical_angle = 0.0; electrical_angle <= 2 * M_PI; electrical_angle += M_PI / 64) {
+            space_vector_modulation(0.8 * cosf(electrical_angle), 0.8 * sinf(electrical_angle));
+            sleep_ms(100);
 
             // Reads sensor using the stored pointer
             int raw_sensor_angle = as5600_read_raw_angl(&sensor_obj); // <-- MODIFIED
@@ -49,6 +49,106 @@ void SaganFOCControl::calibrate() {
     }
     
     space_vector_modulation(0.0f, 0.0f);
+    printf("Calibration Finalized.\n");
+}
+
+void SaganFOCControl::new_calibrate() {
+    printf("Initiating BLDC Motor Calibration...\n");
+    sleep_ms(1000);
+
+    float angle_table[64] = {0.0f};
+
+    for (int index = 0; index < 64; index++){
+        angle_table[index] = M_PI / 64 * index;
+    }
+
+    int up_values[64] = {0};
+    int up_values_average[64] = {0};
+    
+    int down_values[64] = {0};
+    int down_values_average[64] = {0};
+
+    int up_down_average[64] = {0};
+    int up_down_delta[16] = {0};
+
+    // --- Moving Average Variables ---
+    const int WINDOW_SIZE = 10;
+    int value_window[WINDOW_SIZE] = {0}; // An array to store the last 10 values
+    int current_sum = 0.0f;                 // The running sum for efficiency
+    int current_index = 0;  
+
+    for (int index = 63; index >= 0; index--){
+            space_vector_modulation(0.8*cosf(angle_table[index]),0.8*sinf(angle_table[index]));
+            sleep_ms(100);
+            //printf("%.2f;%i \n", angle_table[index], as5600_read_raw_angl(&as5600));
+    }
+
+    sleep_ms(1000);
+    
+    for (int index = 0; index < 64; index++){
+        space_vector_modulation(0.8*cosf(angle_table[index]),0.8*sinf(angle_table[index]));
+        sleep_ms(100);
+        up_values[index] = as5600_read_raw_angl(&sensor_obj);
+        printf("%.2f;%i \n", angle_table[index], up_values[index]);
+        
+    }
+
+    for (int index = 63; index >= 0; index--){
+        space_vector_modulation(0.8*cosf(angle_table[index]),0.8*sinf(angle_table[index]));
+        sleep_ms(100);
+        down_values[index] = as5600_read_raw_angl(&sensor_obj);
+        printf("%.2f;%i \n", angle_table[index], down_values[index]);
+    }
+
+    for (int index = 0; index < 64; index++){
+        int new_value = up_values[index];
+        current_sum -= value_window[current_index];
+        current_sum += new_value;
+        value_window[current_index] = new_value;
+        current_index = (current_index + 1) % WINDOW_SIZE;
+        up_values_average[index] = current_sum / WINDOW_SIZE;
+        sleep_ms(1);
+    }
+
+    for (int i = 0; i < 10; i++) value_window[i] = 0;
+    current_sum = 0;                
+    current_index = 0;  
+
+    for (int index = 0; index < 64; index++){
+        int new_value = down_values[index];
+        current_sum -= value_window[current_index];
+        current_sum += new_value;
+        value_window[current_index] = new_value;
+        current_index = (current_index + 1) % WINDOW_SIZE;
+        down_values_average[index] = current_sum / WINDOW_SIZE;
+        sleep_ms(1);
+    }
+
+    for (int i = 0; i < 10; i++) value_window[i] = 0;
+    current_sum = 0;                
+    current_index = 0; 
+
+    for (int index = 0; index < 64; index++){
+        up_down_average[index] = (up_values_average[index] + down_values_average[index]) / 2;
+        //printf("%i\n", up_down_average[index]);
+    }
+
+    int median_point = static_cast<int>((up_down_average[32] + up_down_average[31]) / 2);
+
+    printf("%i \n", median_point);
+
+    this->lut_electrical_angle[median_point] = M_PI/2;
+
+    for (int index = median_point; index < 4096; index++){
+        this->lut_electrical_angle[index] = M_PI/2 + ((index - median_point) * (2 * M_PI / (4096 / 7))); 
+    }
+
+    for (int index = median_point; index >= 0; index--){
+        this->lut_electrical_angle[index] = M_PI/2 + ((index - median_point) * (2 * M_PI / (4096 / 7))); 
+    }
+
+    space_vector_modulation(0.0f, 0.0f);
+    sleep_ms(1000);
     printf("Calibration Finalized.\n");
 }
 
@@ -76,7 +176,7 @@ void SaganFOCControl::update() {
     if (control_offset >= 200) control_offset = 200;
 
     float control_offset_field = fabs(angle_error) * config.field_p_gain;
-    if (control_offset_field >= 1.0f) control_offset_field = 1.0f;
+    if (control_offset_field >= 0.6f) control_offset_field = 0.6f;
     else if (control_offset_field <= 0.3f) control_offset_field = 0.3f;
 
     int final_angle_lookup_index = (angle_error > 0.0) ? (current_raw_angle + control_offset) : (current_raw_angle - control_offset);

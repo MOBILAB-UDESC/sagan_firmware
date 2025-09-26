@@ -93,6 +93,7 @@ target_link_libraries(sagan_firmware
     saganfoccontrol
     pico_stdlib
     pico_multicore
+    pico_i2c_slave
     hardware_i2c
     hardware_pio
     hardware_timer
