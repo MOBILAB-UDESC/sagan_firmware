@@ -85,11 +85,13 @@ void motor_update(float PWM_INPUT, MotorDriver Motor_select)
         }                                                                                                                                                    \
     }
 
+uint8_t message = 0x00;
 // Our handler is called from the I2C ISR, so it must complete quickly. Blocking calls /
 // printing to stdio may interfere with interrupt handling.
 static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
     switch (event) {
     case I2C_SLAVE_RECEIVE: // master has written some data
+
         i2c_read_raw_blocking(i2c0, &message, 1);
         printf("Message Recived %i \n", message);
         break;
@@ -133,13 +135,17 @@ int main()
     bool slave_mode = false;
 
     //Slave-mode
-    i2c_slave_init(i2c_default, 0x15, &i2c_slave_handler);
-    slave_mode = true;
+    // i2c_slave_init(i2c_default, 0x15, &i2c_slave_handler);
+    // slave_mode = true;
 
     while(slave_mode){
         sleep_ms(1);
-        if ()
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        if (message == 0x01){
+            gpio_put(PICO_DEFAULT_LED_PIN, true);
+        } else {
+            gpio_put(PICO_DEFAULT_LED_PIN, false);
+        }
+        
     }
 
     // Setup motor drivers
@@ -177,7 +183,7 @@ int main()
     printf("Finalized \n");
     sleep_ms(1000);
 
-    uint8_t i2c_message = 0x01;
+    uint8_t i2c_message = 0x00;
     int ret = i2c_write_blocking(i2c0, 0x15, &i2c_message, 1, false);
 
     if (ret = 1){
